@@ -1,0 +1,77 @@
+---
+title: "Practical Machine Learning Project: Write Up"
+author: "Eduardo Morales"
+date: "November 22, 2014"
+output: html_document
+---
+**Objective**
+------------------------------------------------------------------------------------------------
+The objective of this project was to determine  how well a given group of persons are performing weight lifting exercises. In short, the data to be analyzed was obtained from the data collected by accelerometers at the belt, forearm, arm, and dumbbells. There were a total of 6 subjects from which data was collected. A set of data is considered to be the set of measurements taken from all these instruments for a given subject at a given time. Each set of measurement to be analyzed was given a letter grade of A, B, C, D, or E, according to their performance. The objective is to use a *Machine Learning* approach to build a model, using the data from these measurements, and use it to predict the letter grade of 20 sets of data, given in the assignment and referred as the test data.
+
+**Methods:** *How was the Model Built?*
+------------------------------------------------------------------------------------------------
+The Model was build by using **Random Forrest** approach. Specifically it was implemented using Breiman's random forests, which is accessible by the function **'cforest()'**. Different approaches were tested, but 'cforest' gave the lowest prediction error. In addition, the data used to model the Random Forrest was a **partitioned** data from the *Training Data Set* provided in the assignment. The data was partitioned **60/40**, where 60% of the Training Data Set was designated for Training the Model, and 40% for testing the prediction performance of the model. In essence, this 40% was assigned as a *probing data set*; the seed used was 3235. In addition, the data was **pre-processed** by removing data with **near zero variance**. The R-function `nearZeroVar()` was used for this purpose. Furthermore, near zero variance columns were also removed from the Test Data, along with the following columns that were not relevant for this assignment: X, user_name,raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, and num_window. Model tuning was necessary to achieve an acceptable prediction. The `trainControl()` function was used to set Out-Out-Bag CV, K-Fold set to 10, and Repeating 3 times. These settings provided the best prediction outcomes. The prediction were calculated using the `predict()` function and evaluated by calculating the percentage error using a simple, but effective comparison function, available in the compare package. The In-Sample and Out-Of-Sample error were calculated as well.
+
+In short, the following figure summarizes the final implemented approach:
+
+```
+1. The Training data was loaded
+2. It was partitioned 60/40, using a seed of 3235
+3. 60% of data was assigned as the Training Set for modeling the Random Forrest
+4. 40% of data was assigned as the Probing Set for testing the prediction performance
+5. Data was preprocessed by removing Near Zero Variance Columns using nearZeroVar()
+5a. Irrelevant columns were removed: X, user_name,raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, num_window
+6. Parameter Tuning: using Out-Out-Bag CV, K-Fold set to 10, and Repeating 3 times
+7. Prediction calculated with predict() -- All remaining 53 variables were used
+8. Prediction percentage error was calculated using compare(); available in the compare package
+9. In-sample error was calculated, then Out-Of-Sample error, using step 8.
+```
+*How was Cross Validation Used?*
+------------------------------------------------------------------------------------------------
+In this case, cross validation was used in **parameter tuning**. It was found that regular model fitting did not provide low prediction percentage errors. So, several different approaches were tested, and it was found that using K-Fold cross validation, set to 10, and Out-Of-Bag cross validation, with 3 repetitions, produced the lowest prediction percentage errors. In short, the following code was used for Cross Validation:
+
+```
+## Parameter tuning
+fitControl <- trainControl(## 10-fold CV
+        method = "oob",
+        number = 10,
+        repeats = 3)
+modFit <- train(classe ~ ., method = "cforest", trControl = fitControl, data = training)
+```
+*In-Sample and Out-Of-Sample Error*
+------------------------------------------------------------------------------------------------
+
+The prediction performance was evaluated using the percentage error between the expected in the predicted letter grades. Considering that the variable needed to be predicted is not a quantitative value, but rather qualitative, a method for comparing qualitative values was needed. It was found that the function `compare()`, in the compare package, performs an accurate comparison of qualitative vectors. In this way, the In-Sample, and Out-Of-Sample errors were calculated. In theory, the Out-Of-Sample Error must be greater than the In-Sample Error. In fact, this was exactly was it was found.
+
+```
+predictions <- predict(modFit, newdata = training)
+InSampleError <- precentage_error(predictions, training)
+[1] 2.136692
+predictions <- predict(modFit, newdata = Probe)
+OutOfSampleError <- precentage_error(predictions, Probe)
+[1] 2.363316
+```
+*Explanation of Choices Made*
+------------------------------------------------------------------------------------------------
+The choices made during this excercise were all directed to getting the lowest percentage error. In short:
+
+- Data partitioning of 60/40 was used due to the need of evaluating the model before predicting the outcome of test data set
+- a Random Forrest provided the lowest percentage error
+- K-fold set to 10 indicated to be a property of a prediction with low percentage error
+- Repeat set to 3 was a practical value as higher values are more time-comsuming for calculating a prediction
+- OOB was found to produce the lowest percentage error
+- The compare() function was used due to the need of having to assess two qualitative vectors
+- A simpler percentage error serves as a good qualifier for evaluating the prediction
+
+*Results*
+------------------------------------------------------------------------------------------------
+The following results were obtained with the process defined previously:
+```
+predictions <- predict(modFit, newdata = testing) 
+[1] B A A A A E D B A A A C B A E E A B B B
+```
+The approach resulted in a 18/20 correct predictions with the 3rd and 11th predictions being incorrect.
+
+*Conclusion*
+------------------------------------------------------------------------------------------------
+In conclusion, regular model fitting does not produce a low percentage error and the need for parameter tuning, using cross validation, is critical for this assignment. The calculated In-Sample and Out-Of-Sample errors  agreed with the expected results with a 2.13% and 2.36%, respectively. Nevertheless, the approach produced a 10% error when tested against the testing data set. The 7.24% difference can be explained due to overfitting; the data in the probing set, as defined in this approach, is not as representative of the testing set as it is of the training set. Future work must include different parameter tuning, as well as a better data partition, aiming to obtain a Probing Set that is more representative of the Testing Set.
